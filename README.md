@@ -1,155 +1,166 @@
-# 📉 Customer Churn Prediction – Food Delivery Platform
+# 📉 Customer Churn Prediction – Food Delivery Platform  
+*(Using Food Delivery Order History Dataset)*
+
+---
 
 ## 🚀 Project Overview
-Customer churn is a critical challenge for online food delivery platforms, especially when customer engagement drops after discounts or promotions end.
+Customer churn is a critical challenge for online food delivery platforms, especially when customers gradually reduce engagement after promotions or discounts expire.
 
-This project simulates an **internal applied machine learning initiative** to **predict customers likely to churn in the next 30 days**, enabling proactive retention strategies such as personalized offers, loyalty rewards, or engagement nudges.
+This project simulates an **internal applied machine learning initiative** to **predict customers likely to churn in the next 30 days**, using historical food order transaction data.
 
-The solution is built using **publicly available transactional data** and **domain-driven feature engineering**, closely mirroring real-world industry practices.
+The solution is built using the **Food Delivery Order History Dataset** from Kaggle and follows **industry-standard churn modeling practices**, including time-based label creation and behavioral feature engineering.
 
 ---
 
 ## 🎯 Business Problem
-> How can we identify customers who are at high risk of churning so that retention actions can be applied before they stop ordering?
+> How can we proactively identify customers who are likely to stop ordering so that targeted retention actions can be applied?
 
-### Why this matters
-- Acquiring new customers is more expensive than retaining existing ones
-- Early churn prediction helps improve:
-  - Customer Lifetime Value (CLV)
-  - Repeat order rate
-  - Loyalty program effectiveness
+### Business Value
+- Improves customer lifetime value (CLV)
+- Enables personalized offers and loyalty campaigns
+- Reduces cost of customer acquisition
+- Supports data-driven retention strategies
 
 ---
 
 ## 📌 Churn Definition
 A customer is considered **churned** if:
-They place ZERO orders in the next 30 days
-This definition is:
-- Simple and realistic
-- Commonly used in consumer platforms
-- Easy to operationalize in production systems
+They place ZERO completed orders in the next 30 days
+- The churn label is **derived**, not provided directly
+- This mirrors how churn is defined in real production systems
 
 ---
 
-## 📊 Dataset
-- Source: Public food delivery / transactional datasets from Kaggle
-- Data type: Customer-level order and engagement data
-- Data is anonymized and used only for learning and demonstration purposes
+## 📊 Dataset Description
 
-### Key Data Fields
-| Category | Examples |
-|--------|----------|
-| Customer | customer_id |
-| Orders | order_date, order_value |
-| Engagement | order_frequency, days_since_last_order |
-| Promotions | coupon_usage |
-| Loyalty | points_earned, points_redeemed |
+### Dataset Source
+- **Food Delivery Order History Dataset** (Kaggle)
+- Total records: **21,321 orders**
+- Granularity: **Order-level data**
 
-> **Note:** Churn labels are **engineered**, not provided directly — reflecting real-world ML workflows.
+### Key Columns Used
+
+| Category | Columns |
+|--------|--------|
+| Customer | `Customer ID` |
+| Order | `Order ID`, `Order Placed At`, `Order Status` |
+| Location | `City`, `Subzone` |
+| Financial | `Bill subtotal`, `Total`, `Packaging charges` |
+| Discounts | `Restaurant discount`, `Gold discount`, `Brand pack discount` |
+| Engagement | `Items in order`, `Delivery`, `Distance` |
+| Experience | `Rating`, `Review`, `Customer complaint tag` |
+| Operations | `KPT duration`, `Rider wait time` |
+
+> ⚠️ Some fields (ratings, reviews, complaints) are sparsely populated and handled carefully during EDA.
 
 ---
 
-## 🧠 Feature Engineering
-Features are designed based on **product and domain knowledge** rather than blindly using raw data.
+## 🧠 Feature Engineering Strategy
+
+Features are engineered at the **customer level** using historical order data.
 
 ### Behavioral Features
+- Total orders per customer
 - Orders in last 30 / 60 / 90 days
-- Average order value
-- Days since last order
+- Days since last order (recency)
+- Average bill amount
+- Average number of items per order
 
-### Loyalty & Promotion Features
-- Loyalty points earned
-- Loyalty points redeemed
-- Coupon usage rate
+### Discount & Pricing Features
+- Average discount amount
+- Discount usage frequency
+- Ratio of discounted orders
+- Net spend vs gross bill amount
 
-### Engagement Signals
-- Order frequency trends
-- Weekend vs weekday ordering behavior
+### Experience & Service Features
+- Average delivery time
+- Rider wait time statistics
+- Order cancellation rate
+- Average customer rating (if available)
 
-These features help capture **customer intent and engagement decay**.
+These features help capture **engagement decay**, **price sensitivity**, and **service experience**, which are strong churn indicators.
 
 ---
 
 ## 🧪 Modeling Approach
-Three models are trained and compared:
 
-1. **Logistic Regression** – baseline model
-2. **Random Forest** – captures non-linear relationships
-3. **XGBoost / Gradient Boosting** – performance-focused model
+The churn prediction problem is framed as a **binary classification task**.
 
-### Why multiple models?
-- Establish a baseline
-- Compare interpretability vs performance
-- Avoid overfitting to a single approach
+### Models Used
+1. **Logistic Regression** – baseline, interpretable model
+2. **Random Forest** – captures non-linear behavior
+3. **Gradient Boosting (XGBoost / LightGBM)** – performance-focused model
+
+Multiple models are compared to balance **interpretability vs predictive power**.
 
 ---
 
 ## 📈 Evaluation Metrics
-Churn prediction is an **imbalanced classification problem**, so accuracy alone is misleading.
 
-Primary metrics:
-- **ROC-AUC** – overall model discrimination
-- **Recall (Churn Class)** – ability to catch at-risk customers
+Churn prediction is an **imbalanced classification problem**, so accuracy alone is not sufficient.
+
+### Primary Metrics
+- **ROC-AUC** – overall discrimination ability
+- **Recall (Churn = 1)** – ability to identify at-risk customers
 - **Precision–Recall trade-off** – cost-sensitive evaluation
 
-> In churn prediction, missing a churner is more expensive than flagging a false positive.
+> Missing a churner is typically more expensive than targeting a non-churner.
 
 ---
 
 ## 📂 Project Structure
 
-    churn-prediction/
-    │
-    ├── data/
-    │   ├── raw/                 # Original dataset (unchanged)
-    │   └── processed/           # Cleaned & feature-engineered data
-    │
-    ├── notebooks/
-    │   ├── 01_eda.ipynb         # Exploratory Data Analysis
-    │   ├── 02_feature_engineering.ipynb
-    │   └── 03_modeling.ipynb
-    │
-    ├── src/
-    │   ├── preprocessing.py    # Data cleaning & feature logic
-    │   ├── train.py            # Model training pipeline
-    │   └── evaluate.py         # Model evaluation & metrics
-    │
-    ├── README.md
-    └── requirements.txt
+- **data/**
+  - **raw/** – Original dataset (unchanged)
+  - **processed/** – Cleaned and feature-engineered data
+- **notebooks/**
+  - **01_eda.ipynb** – Exploratory Data Analysis
+  - **02_feature_engineering.ipynb** – Feature creation
+  - **03_modeling.ipynb** – Model training and evaluation
+- **src/**
+  - **preprocessing.py** – Data cleaning and transformations
+  - **train.py** – Model training pipeline
+  - **evaluate.py** – Model evaluation and metrics
+- **README.md** – Project documentation
+- **requirements.txt** – Python dependencies
 
 ---
 
-## 💼 Business Impact & Use Case
+## 💼 Business Use Case
+
 The model output can be used to:
-- Identify top X% high-risk customers
-- Trigger targeted retention campaigns
-- Optimize loyalty rewards distribution
-- Reduce customer churn proactively
+- Identify high-risk customers proactively
+- Trigger personalized retention offers
+- Optimize loyalty and discount strategies
+- Improve repeat order rate
 
 Example:
-> Retaining even 5–10% of high-risk customers can significantly improve revenue and customer lifetime value.
+> Retaining even a small percentage of high-risk users can significantly improve revenue and platform engagement.
 
 ---
 
 ## ⚠️ Assumptions & Limitations
-- Dataset is a proxy for real production data
+- Dataset is a proxy for production data
 - Predictions are generated in batch mode
-- External factors (competition, delivery delays) are not included
-- 
+- External factors (competitor offers, app UX changes) are not included
+- Some engagement signals are sparsely populated
+
+These limitations are documented to keep the project **transparent and interview-safe**.
+
 ---
 
 ## 🔮 Future Improvements
-- Add time-based features using rolling windows
-- Integrate customer feedback or ratings
-- Deploy the model as a REST API
+- Add rolling time-window features
+- Incorporate customer lifecycle stages
+- Deploy model as an API
 - Add monitoring and retraining pipeline (MLOps)
 
 ---
 
 ## 🧠 Key Learnings
-- Real-world ML problems rarely come with clean labels
-- Feature engineering often has more impact than model choice
-- Business context is critical for model evaluation
+- Churn labels often need to be engineered
+- Behavioral features outperform raw demographics
+- Business context is essential for evaluation
 
 ---
 
@@ -160,4 +171,4 @@ Applied Machine Learning Engineer
 
 ---
 
-⭐ If you find this project useful, feel free to explore or connect.
+⭐ Feel free to explore the notebooks and reach out for discussion.
