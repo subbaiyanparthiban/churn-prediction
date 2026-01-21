@@ -1,33 +1,33 @@
-# 📉 Customer Churn Prediction – Food Delivery Platform  
-*(Using Food Delivery Order History Dataset)*
+# 📉 Customer Churn Prediction – Food Delivery Platform
 
 ---
 
 ## 🚀 Project Overview
-Customer churn is a critical challenge for online food delivery platforms, especially when customers gradually reduce engagement after promotions or discounts expire.
+Customer churn is a major challenge for online food delivery platforms, where a large portion of users place only one or two orders and then become inactive.
 
-This project simulates an **internal applied machine learning initiative** to **predict customers likely to churn in the next 30 days**, using historical food order transaction data.
+This project simulates an **internal Applied Machine Learning initiative** to **predict customers likely to churn in the next 30 days**, enabling proactive retention strategies such as targeted offers, loyalty rewards, and engagement nudges.
 
-The solution is built using the **Food Delivery Order History Dataset** from Kaggle and follows **industry-standard churn modeling practices**, including time-based label creation and behavioral feature engineering.
+The solution is built using a real-world **Food Delivery Order History Dataset** and follows **industry-standard ML practices**, including time-based labeling, feature engineering, imbalance handling, and business-aware threshold tuning.
 
 ---
 
 ## 🎯 Business Problem
-> How can we proactively identify customers who are likely to stop ordering so that targeted retention actions can be applied?
+> How can we identify customers who are at high risk of churn so that retention actions can be applied before they stop ordering?
 
 ### Business Value
 - Improves customer lifetime value (CLV)
-- Enables personalized offers and loyalty campaigns
-- Reduces cost of customer acquisition
-- Supports data-driven retention strategies
+- Reduces cost of reacquisition
+- Enables personalized loyalty and discount strategies
+- Supports data-driven decision-making for retention teams
 
 ---
 
 ## 📌 Churn Definition
 A customer is considered **churned** if:
-They place ZERO completed orders in the next 30 days
-- The churn label is **derived**, not provided directly
-- This mirrors how churn is defined in real production systems
+- Churn labels are **engineered**, not provided directly
+- Only **successfully delivered orders** are considered to avoid operational noise
+
+This definition mirrors real-world churn modeling practices in consumer platforms.
 
 ---
 
@@ -35,76 +35,113 @@ They place ZERO completed orders in the next 30 days
 
 ### Dataset Source
 - **Food Delivery Order History Dataset** (Kaggle)
-- Total records: **21,321 orders**
-- Granularity: **Order-level data**
+- Total records: ~21,000 orders
+- Granularity: Order-level transactional data
 
 ### Key Columns Used
-
 | Category | Columns |
 |--------|--------|
 | Customer | `Customer ID` |
 | Order | `Order ID`, `Order Placed At`, `Order Status` |
 | Location | `City`, `Subzone` |
-| Financial | `Bill subtotal`, `Total`, `Packaging charges` |
-| Discounts | `Restaurant discount`, `Gold discount`, `Brand pack discount` |
-| Engagement | `Items in order`, `Delivery`, `Distance` |
-| Experience | `Rating`, `Review`, `Customer complaint tag` |
-| Operations | `KPT duration`, `Rider wait time` |
+| Pricing | `Bill subtotal`, `Total`, `Packaging charges` |
+| Discounts | `Gold discount`, `Brand pack discount`, `Restaurant discounts` |
+| Operations | `KPT duration`, `Rider wait time`, `Distance` |
 
-> ⚠️ Some fields (ratings, reviews, complaints) are sparsely populated and handled carefully during EDA.
+Highly sparse columns (ratings, reviews, complaints, cancellation metadata) were intentionally dropped during EDA.
 
 ---
 
-## 🧠 Feature Engineering Strategy
+## 🔍 Exploratory Data Analysis (EDA)
 
-Features are engineered at the **customer level** using historical order data.
+Key findings from EDA:
+- >99% of orders are successfully delivered → churn modeling is restricted to delivered orders
+- Customer behavior is highly skewed:
+  - Median orders per customer = 1
+  - Small group of power users
+- Churn rate ≈ **74%**, confirming a strongly imbalanced classification problem
+- Recency and engagement decay are stronger churn signals than raw spend
+
+EDA guided:
+- Feature selection
+- Imbalance-aware modeling
+- Metric choice (Recall, ROC-AUC over Accuracy)
+
+---
+
+## 🧠 Feature Engineering
+
+All features are engineered at the **customer level** using historical data only (no leakage).
 
 ### Behavioral Features
-- Total orders per customer
+- Total orders
 - Orders in last 30 / 60 / 90 days
-- Days since last order (recency)
-- Average bill amount
-- Average number of items per order
+- Recency (days since last order)
+- Customer tenure
+- Average order value
+- Total spend
 
-### Discount & Pricing Features
+### Discount & Price Sensitivity
 - Average discount amount
-- Discount usage frequency
-- Ratio of discounted orders
-- Net spend vs gross bill amount
+- Discount usage rate
+- Net spend behavior
 
-### Experience & Service Features
-- Average delivery time
-- Rider wait time statistics
-- Order cancellation rate
-- Average customer rating (if available)
+### Operational Experience
+- Average kitchen preparation time (KPT)
+- Average rider wait time
+- Average delivery distance (normalized to km)
 
-These features help capture **engagement decay**, **price sensitivity**, and **service experience**, which are strong churn indicators.
+Distance values with mixed formats (e.g. `"3 km"`, `"850 m"`, `"<1 km"`) were normalized using a robust parser.
 
 ---
 
 ## 🧪 Modeling Approach
 
-The churn prediction problem is framed as a **binary classification task**.
+The problem is framed as a **binary classification task** with heavy class imbalance.
 
-### Models Used
-1. **Logistic Regression** – baseline, interpretable model
-2. **Random Forest** – captures non-linear behavior
-3. **Gradient Boosting (XGBoost / LightGBM)** – performance-focused model
+### Models Trained
+1. **Logistic Regression**
+   - Baseline model
+   - Interpretable coefficients
+   - `class_weight="balanced"`
 
-Multiple models are compared to balance **interpretability vs predictive power**.
+2. **Random Forest**
+   - Captures non-linear customer behavior
+   - Feature importance analysis
+   - Lightweight hyperparameter tuning using `RandomizedSearchCV`
+
+3. **XGBoost (Final Model)**
+   - Best performance on structured tabular data
+   - Handles feature interactions effectively
+   - Uses `scale_pos_weight` to address class imbalance
 
 ---
 
-## 📈 Evaluation Metrics
+## 📈 Evaluation Strategy
 
-Churn prediction is an **imbalanced classification problem**, so accuracy alone is not sufficient.
+Because churn prediction is imbalanced, **accuracy is not used**.
 
 ### Primary Metrics
-- **ROC-AUC** – overall discrimination ability
-- **Recall (Churn = 1)** – ability to identify at-risk customers
-- **Precision–Recall trade-off** – cost-sensitive evaluation
+- **Recall (Churn = 1)** – minimize missed churners
+- **ROC-AUC** – overall discrimination
+- **Precision–Recall trade-off** – business cost awareness
 
-> Missing a churner is typically more expensive than targeting a non-churner.
+### Threshold Tuning
+Instead of using the default 0.5 threshold:
+- A **business-constrained threshold** is selected:
+  - Recall ≥ 80%
+  - Precision ≥ 30%
+
+This avoids the trivial (and useless) solution of predicting everyone as churn.
+
+---
+
+## 🏆 Final Model Selection
+
+**XGBoost with a business-optimized decision threshold** is selected as the final model due to:
+- Highest recall with acceptable precision
+- Strong ROC-AUC
+- Robust handling of non-linear patterns and imbalance
 
 ---
 
@@ -112,55 +149,38 @@ Churn prediction is an **imbalanced classification problem**, so accuracy alone 
 
 - **data/**
   - **raw/** – Original dataset (unchanged)
-  - **processed/** – Cleaned and feature-engineered data
+  - **processed/** – Model-ready customer-level features
 - **notebooks/**
   - **01_eda.ipynb** – Exploratory Data Analysis
   - **02_feature_engineering.ipynb** – Feature creation
-  - **03_modeling.ipynb** – Model training and evaluation
-- **src/**
-  - **preprocessing.py** – Data cleaning and transformations
-  - **train.py** – Model training pipeline
-  - **evaluate.py** – Model evaluation and metrics
-- **README.md** – Project documentation
-- **requirements.txt** – Python dependencies
-
----
-
-## 💼 Business Use Case
-
-The model output can be used to:
-- Identify high-risk customers proactively
-- Trigger personalized retention offers
-- Optimize loyalty and discount strategies
-- Improve repeat order rate
-
-Example:
-> Retaining even a small percentage of high-risk users can significantly improve revenue and platform engagement.
+  - **03_modeling.ipynb** – Modeling, tuning, and evaluation
+- **README.md**
+- **requirements.txt**
 
 ---
 
 ## ⚠️ Assumptions & Limitations
 - Dataset is a proxy for production data
 - Predictions are generated in batch mode
-- External factors (competitor offers, app UX changes) are not included
-- Some engagement signals are sparsely populated
+- External factors (competitor offers, UI changes) are not included
+- Real-time deployment is out of scope
 
-These limitations are documented to keep the project **transparent and interview-safe**.
+These are documented intentionally to keep the project transparent and interview-safe.
 
 ---
 
 ## 🔮 Future Improvements
-- Add rolling time-window features
-- Incorporate customer lifecycle stages
-- Deploy model as an API
+- Add time-series features (trend in engagement)
+- Introduce customer lifecycle stages
+- Deploy model as a REST API
 - Add monitoring and retraining pipeline (MLOps)
 
 ---
 
-## 🧠 Key Learnings
-- Churn labels often need to be engineered
-- Behavioral features outperform raw demographics
-- Business context is essential for evaluation
+## 🧠 Key Takeaways
+- Real-world ML problems rarely come with clean labels
+- Feature engineering and business context matter more than model choice
+- Threshold tuning is essential for operational usefulness
 
 ---
 
@@ -171,4 +191,4 @@ Applied Machine Learning Engineer
 
 ---
 
-⭐ Feel free to explore the notebooks and reach out for discussion.
+⭐ This project represents a realistic, business-driven churn prediction workflow.
